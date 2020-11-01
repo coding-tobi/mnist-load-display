@@ -1,15 +1,19 @@
 import * as tf from "@tensorflow/tfjs";
+import { Tensor4D } from "@tensorflow/tfjs";
 import { Inflate } from "pako";
 
 const IMAGE_DATA_START = 16;
 const LABEL_DATA_START = 8;
 
-export interface MnistEntry {
-  label: number;
-  image: tf.Tensor2D;
+export interface MnistBatch {
+  done: boolean;
+  value: {
+    xs: tf.Tensor4D;
+    ys: tf.Tensor2D;
+  };
 }
 
-export default class MnistDataset {
+export default class MnistDataLoader {
   private static readonly _NORMALIZE_FACTOR = tf.scalar(1.0 / 255.0, "float32");
 
   private _imageData: Uint8Array | null = null;
@@ -20,6 +24,10 @@ export default class MnistDataset {
 
   private _imageDataSize = 0;
   private _cursor = 0;
+
+  public get numberOfImages() {
+    return this._numberOfImages;
+  }
 
   public get numberOfRows() {
     return this._numberOfRows;
@@ -39,22 +47,25 @@ export default class MnistDataset {
 
     if (imagesResponse.body && labelsResponse.body) {
       [this._imageData, this._labelData] = await Promise.all([
-        MnistDataset.inflate(imagesResponse.body),
-        MnistDataset.inflate(labelsResponse.body),
+        MnistDataLoader.inflate(imagesResponse.body),
+        MnistDataLoader.inflate(labelsResponse.body),
       ]);
-      this._numberOfImages = MnistDataset.readUInt32(4, this._imageData);
-      this._numberOfRows = MnistDataset.readUInt32(8, this._imageData);
-      this._numberOfColumns = MnistDataset.readUInt32(12, this._imageData);
+      this._numberOfImages = MnistDataLoader.readUInt32(4, this._imageData);
+      this._numberOfRows = MnistDataLoader.readUInt32(8, this._imageData);
+      this._numberOfColumns = MnistDataLoader.readUInt32(12, this._imageData);
       this._imageDataSize = this._numberOfRows * this._numberOfColumns;
     } else {
       return Promise.reject("LOADING DATA FAILED!");
     }
   }
 
-  public nextBatch(size: number) {
-    if (this._labelData && this._imageData) {
-      const labelData = this._labelData;
-      const imageData = this._imageData;
+  public nextBatch(size: number): MnistBatch {
+    console.assert(this._labelData, "NO DATA LOADED!");
+    console.assert(this._imageData, "NO DATA LOADED!");
+
+    return tf.tidy(() => {
+      const labelData = <Uint8Array>this._labelData;
+      const imageData = <Uint8Array>this._imageData;
       const batch = [...Array(size).keys()]
         .map((i) => (i + this._cursor) % this._numberOfImages)
         .map((i) => [
@@ -67,23 +78,34 @@ export default class MnistDataset {
             imageIndex,
             imageIndex + this._imageDataSize
           ),
-        }))
-        .map<MnistEntry>(({ label, imageData }) => ({
-          label,
-          image: tf
-            .tensor2d(
-              imageData,
-              [this._numberOfRows, this._numberOfColumns],
-              "float32"
-            )
-            .mul(MnistDataset._NORMALIZE_FACTOR),
         }));
 
+      const xsData = new Array<number>().concat.apply(
+        [],
+        batch.map((x) => Array.from(x.imageData))
+      );
+      const xs = tf
+        .tensor4d(
+          xsData,
+          [size, this._numberOfRows, this._numberOfColumns, 1],
+          "float32"
+        )
+        .mul<Tensor4D>(MnistDataLoader._NORMALIZE_FACTOR);
+
+      const ysData = batch.map((y) => y.label);
+      const ys = tf.oneHot(ysData, 10).as2D(ysData.length, 10);
+
+      const done = this._numberOfImages <= this._cursor + size;
       this._cursor = (this._cursor + size) % this._numberOfImages;
-      return batch;
-    } else {
-      return [];
-    }
+
+      return {
+        done,
+        value: {
+          xs,
+          ys,
+        },
+      };
+    });
   }
 
   /**

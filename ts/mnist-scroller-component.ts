@@ -1,5 +1,5 @@
 import * as tf from "@tensorflow/tfjs";
-import MnistDataset from "./mnist-dataset";
+import MnistDataLoader from "./mnist-data-loader";
 
 import CSS from "../style.css";
 
@@ -10,7 +10,7 @@ export default class MnistScrollerComponent extends HTMLElement {
   private _root: ShadowRoot;
   private _scroller: HTMLDivElement;
   private _content: HTMLDivElement;
-  private _dataset: MnistDataset;
+  private _dataLoader: MnistDataLoader;
 
   private readonly scrollHandler = () => {
     this.fillContent();
@@ -21,7 +21,7 @@ export default class MnistScrollerComponent extends HTMLElement {
     this._root = this.attachShadow({ mode: "closed" });
     this._scroller = document.createElement("div");
     this._content = document.createElement("div");
-    this._dataset = new MnistDataset(IMAGES_URL, LABELS_URL);
+    this._dataLoader = new MnistDataLoader(IMAGES_URL, LABELS_URL);
 
     // Attach styles
     const style = document.createElement("style");
@@ -45,7 +45,7 @@ export default class MnistScrollerComponent extends HTMLElement {
 
   protected async connectedCallback() {
     if (!this.isConnected) return;
-    await this._dataset.load();
+    await this._dataLoader.load();
     this.fillContent();
 
     this._scroller.addEventListener("scroll", this.scrollHandler);
@@ -57,11 +57,31 @@ export default class MnistScrollerComponent extends HTMLElement {
 
   private fillContent() {
     tf.tidy(() => {
-      // load data and create canvases
-      this._dataset.nextBatch(8).forEach(async ({ label, image }) => {
+      const BATCH_SIZE = 8;
+      const batch = this._dataLoader.nextBatch(BATCH_SIZE);
+      [...new Array(BATCH_SIZE).keys()].forEach(async (i) => {
+        const image = batch.value.xs
+          .slice(
+            [i, 0, 0, 0],
+            [
+              1,
+              this._dataLoader.numberOfColumns,
+              this._dataLoader.numberOfRows,
+              1,
+            ]
+          )
+          .as2D(
+            this._dataLoader.numberOfColumns,
+            this._dataLoader.numberOfRows
+          );
+        const labelTensor = batch.value.ys.slice([i, 0], [1, 10]).as1D();
+        const label = `label: ${labelTensor.toString()}\nargMax: ${labelTensor
+          .argMax()
+          .toString()}`;
+
         const canvas = document.createElement("canvas");
-        canvas.width = this._dataset.numberOfColumns;
-        canvas.height = this._dataset.numberOfRows;
+        canvas.width = this._dataLoader.numberOfColumns;
+        canvas.height = this._dataLoader.numberOfRows;
         canvas.title = label.toString();
         await tf.browser.toPixels(image, canvas);
         this._content.appendChild(canvas);
