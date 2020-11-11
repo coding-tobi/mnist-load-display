@@ -30,17 +30,22 @@ export default class MnistScrollerComponent extends HTMLElement {
 
     // Attach scroller
     this._scroller.className = "scroller";
-    this._scroller.appendChild(this._content);
-    this._content.className = "content";
     this._root.appendChild(this._scroller);
 
     // Header...
-    const h1 = document.createElement("h1");
+    const h1 = document.createElement("span");
     h1.textContent = "MNIST-Dataset infinite scroll";
-    this._content.appendChild(h1);
-    const h2 = document.createElement("h2");
+    h1.style.fontSize = "2em";
+    this._scroller.appendChild(h1);
+    this._scroller.appendChild(document.createElement("br"));
+    const h2 = document.createElement("span");
     h2.textContent = "At least until your browser crashes...";
-    this._content.appendChild(h2);
+    h2.style.fontSize = "1.5em";
+    this._scroller.appendChild(h2);
+
+    // Attach content container
+    this._content.className = "content";
+    this._scroller.appendChild(this._content);
   }
 
   protected async connectedCallback() {
