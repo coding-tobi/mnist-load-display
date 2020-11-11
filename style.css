@@ -1,8 +1,29 @@
 .scroller {
+  background-color: #0a7cc4;
+  color: white;
+  border-radius: 4px;
+  padding: 4px;
   height: 400px;
+  max-width: 500px;
   overflow-y: scroll;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: center;
+}
+
+.scroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroller::-webkit-scrollbar-thumb {
+  background: #b812b7;
+  border-radius: 4px;
+}
+.scroller::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .content {
   line-height: 0;
+  margin-top: 8px;
 }

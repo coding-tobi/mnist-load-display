@@ -2,7 +2,7 @@
   "name": "mnist-load-display",
   "version": "1.0.0",
   "description": "Load and display handwritten digits from THE MNIST DATABASE (http://yann.lecun.com/exdb/mnist/) in an infinite scroll.",
-  "main": "./ts/index.ts",
+  "main": "./src/index.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "webpack-dev-server --config webpack.dev.js",
