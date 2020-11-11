@@ -109,7 +109,7 @@ export default class MnistDataLoader {
   }
 
   /**
-   * inflate a stream with the pako Inflator!
+   * inflates a stream using the pako Inflate class.
    * @param stream compressed Data
    */
   private static async inflate(
