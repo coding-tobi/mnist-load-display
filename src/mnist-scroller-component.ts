@@ -3,6 +3,7 @@ import MnistDataLoader from "./mnist-data-loader";
 
 import CSS from "../style.css";
 
+const BATCH_SIZE = 8;
 const IMAGES_URL = "ressources/t10k-images-idx3-ubyte.gz";
 const LABELS_URL = "ressources/t10k-labels-idx1-ubyte.gz";
 
@@ -62,22 +63,21 @@ export default class MnistScrollerComponent extends HTMLElement {
 
   private fillContent() {
     tf.tidy(() => {
-      const BATCH_SIZE = 8;
       const batch = this._dataLoader.nextBatch(BATCH_SIZE);
       [...new Array(BATCH_SIZE).keys()].forEach(async (i) => {
-        const image = batch.value.xs
+        const imageTensor = batch.value.xs
           .slice(
             [i, 0, 0, 0],
             [
               1,
-              this._dataLoader.numberOfColumns,
               this._dataLoader.numberOfRows,
+              this._dataLoader.numberOfColumns,
               1,
             ]
           )
           .as2D(
-            this._dataLoader.numberOfColumns,
-            this._dataLoader.numberOfRows
+            this._dataLoader.numberOfRows,
+            this._dataLoader.numberOfColumns
           );
         const labelTensor = batch.value.ys.slice([i, 0], [1, 10]).as1D();
         const label = `label: ${labelTensor.toString()}\nargMax: ${labelTensor
@@ -87,8 +87,8 @@ export default class MnistScrollerComponent extends HTMLElement {
         const canvas = document.createElement("canvas");
         canvas.width = this._dataLoader.numberOfColumns;
         canvas.height = this._dataLoader.numberOfRows;
-        canvas.title = label.toString();
-        await tf.browser.toPixels(image, canvas);
+        canvas.title = label;
+        await tf.browser.toPixels(imageTensor, canvas);
         this._content.appendChild(canvas);
       });
     });
